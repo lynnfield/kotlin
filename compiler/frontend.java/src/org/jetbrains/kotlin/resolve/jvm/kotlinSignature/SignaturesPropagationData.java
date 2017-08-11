@@ -22,10 +22,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
 import org.jetbrains.kotlin.descriptors.*;
-import org.jetbrains.kotlin.descriptors.annotations.Annotations;
+import org.jetbrains.kotlin.descriptors.annotations.*;
 import org.jetbrains.kotlin.descriptors.impl.ValueParameterDescriptorImpl;
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation;
 import org.jetbrains.kotlin.load.java.descriptors.JavaMethodDescriptor;
+import org.jetbrains.kotlin.load.java.descriptors.UtilKt;
 import org.jetbrains.kotlin.load.java.structure.JavaMethod;
 import org.jetbrains.kotlin.name.Name;
 import org.jetbrains.kotlin.resolve.DescriptorUtils;
@@ -68,7 +69,11 @@ public class SignaturesPropagationData {
 
         superFunctions = getSuperFunctionsForMethod(method, autoMethodDescriptor, containingClass);
         modifiedValueParameters = superFunctions.isEmpty()
-                                  ? new ValueParameters(null, autoValueParameters, /* stableParameterNames = */false)
+                                  ? new ValueParameters(null, autoValueParameters,
+                                                        autoValueParameters.stream().allMatch(
+                                                                it -> UtilKt.getParameterNameAnnotation(it) != null
+                                                        ))
+
                                   : modifyValueParametersAccordingToSuperMethods(autoValueParameters);
     }
 
@@ -159,12 +164,15 @@ public class SignaturesPropagationData {
                     }
                 }
 
+                AnnotationDescriptor currentName = UtilKt.getParameterNameAnnotation(originalParam);
+                boolean shouldTakeOldName = currentName == null && stableName != null;
+
                 resultParameters.add(new ValueParameterDescriptorImpl(
                         originalParam.getContainingDeclaration(),
                         null,
                         shouldBeExtension ? originalIndex - 1 : originalIndex,
                         originalParam.getAnnotations(),
-                        stableName != null ? stableName : originalParam.getName(),
+                        shouldTakeOldName ? stableName : originalParam.getName(),
                         altType,
                         originalParam.declaresDefaultValue(),
                         originalParam.isCrossinline(),
@@ -175,7 +183,9 @@ public class SignaturesPropagationData {
             }
         }
 
-        boolean hasStableParameterNames = CollectionsKt.any(superFunctions, CallableDescriptor::hasStableParameterNames);
+        boolean hasStableParameterNames =
+                CollectionsKt.any(superFunctions, CallableDescriptor::hasStableParameterNames) ||
+                CollectionsKt.all(resultParameters, it -> UtilKt.getParameterNameAnnotation(it) != null);
 
         return new ValueParameters(resultReceiverType, resultParameters, hasStableParameterNames);
     }
