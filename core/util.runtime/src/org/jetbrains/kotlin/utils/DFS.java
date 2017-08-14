@@ -61,6 +61,30 @@ public class DFS {
         });
     }
 
+    public static <N> int count(
+            @NotNull Collection<N> nodes,
+            @NotNull Neighbors<N> neighbors,
+            @NotNull final Function1<N, Boolean> predicate
+    ) {
+        final int[] result = new int[] {0};
+
+        return dfs(nodes, neighbors, new AbstractNodeHandler<N, Integer>() {
+            @Override
+            public Integer result() {
+                return result[0];
+            }
+
+            @Override
+            public boolean beforeChildren(N current) {
+                if (predicate.invoke(current)) {
+                    result[0]++;
+                }
+
+                return true;
+            }
+        });
+    }
+
     public static <N, R> R dfsFromNode(@NotNull N node, @NotNull Neighbors<N> neighbors, @NotNull Visited<N> visited, @NotNull NodeHandler<N, R> handler) {
         doDfs(node, neighbors, visited, handler);
         return handler.result();

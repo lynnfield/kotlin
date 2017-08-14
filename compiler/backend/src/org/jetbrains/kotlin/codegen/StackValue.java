@@ -29,7 +29,13 @@ import org.jetbrains.kotlin.codegen.intrinsics.IntrinsicMethods;
 import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper;
 import org.jetbrains.kotlin.descriptors.*;
 import org.jetbrains.kotlin.descriptors.impl.SyntheticFieldDescriptor;
+import org.jetbrains.kotlin.incremental.components.NoLookupLocation;
 import org.jetbrains.kotlin.load.java.JvmAbi;
+import org.jetbrains.kotlin.load.java.descriptors.AnnotationDefaultValue;
+import org.jetbrains.kotlin.load.java.descriptors.NullDefaultValue;
+import org.jetbrains.kotlin.load.java.descriptors.StringDefaultValue;
+import org.jetbrains.kotlin.load.java.descriptors.UtilKt;
+import org.jetbrains.kotlin.name.Name;
 import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
 import org.jetbrains.kotlin.resolve.BindingContext;
@@ -175,6 +181,35 @@ public abstract class StackValue {
         }
         else {
             return new Constant(value, type);
+        }
+    }
+
+    @NotNull
+    public static StackValue constantFromString(@NotNull String value, @NotNull Type type) {
+        Type unboxedType = unboxPrimitiveTypeOrNull(type);
+        if (unboxedType != null) {
+            type = unboxedType;
+        }
+
+        switch (type.getSort()) {
+            case Type.BOOLEAN:
+                return constant(Boolean.valueOf(value), type);
+            case Type.CHAR:
+                return constant(value.charAt(0), type);
+            case Type.BYTE:
+                return constant(Byte.valueOf(value), type);
+            case Type.SHORT:
+                return constant(Short.valueOf(value), type);
+            case Type.INT:
+                return constant(Integer.valueOf(value), type);
+            case Type.LONG:
+                return constant(Long.valueOf(value), type);
+            case Type.FLOAT:
+                return constant(Float.valueOf(value), type);
+            case Type.DOUBLE:
+                return constant(Double.valueOf(value), type);
+            default:
+                return constant(value, type);
         }
     }
 
